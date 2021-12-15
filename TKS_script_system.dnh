@@ -1,0 +1,203 @@
+
+let objScene = GetEnemyBossSceneObjectID();
+let stgEnemyFilePath;
+
+
+@Initialize
+{
+	InstallFont("../fonts/dogicapixel.otf");
+	InitFrame();
+	TLife();
+	TBomb();
+	TScore();
+	TBossLife();
+	SetPauseScriptPath(GetCurrentScriptDirectory() ~ "./TKS_pause_script_system.dnh");
+	SetEndSceneScriptPath(GetCurrentScriptDirectory() ~ "./TKS_endscene_script_system.dnh");
+	SetReplaySaveSceneScriptPath(GetCurrentScriptDirectory() ~ "./TKS_replayscene_script_system.dnh");
+}
+
+@MainLoop
+{
+	
+	yield;
+}
+
+@Event
+{
+	
+}
+
+
+
+
+function InitFrame()
+{
+	let STG = ObjPrim_Create(OBJ_SPRITE_2D);
+	let STGImg = GetCurrentScriptDirectory() ~ "gameGUIStg.png";
+	ObjPrim_SetTexture(STG, STGImg);
+	Obj_SetRenderPriority(STG, 0);
+	ObjSprite2D_SetSourceRect(STG, 0, 0, GetScreenWidth(), GetScreenHeight());
+	ObjSprite2D_SetDestRect(STG, 0, 0, GetScreenWidth(), GetScreenHeight());
+	SetStgFrame(131, 21, 505, 378, 20, 80);
+
+
+}
+
+task TLife
+{
+	let text = ObjText_Create();
+	ObjText_SetFontType(text, "Dogica Pixel");
+	ObjText_SetFontSize(text, 27);
+	ObjText_SetFontColorTop(text, 255, 255, 0);
+	ObjText_SetFontColorBottom(text, 255, 255, 0);
+	ObjRender_SetX(text, 547);
+	ObjRender_SetY(text, 157);
+    Obj_SetRenderPriority(text, 0.1);
+	round(text);
+
+	 while(true){
+        let score = GetPlayerLife();
+        score = min(score, 999999);
+        ObjText_SetText(text, rtos("00", score));
+        yield;
+    }
+
+}
+
+
+
+task TBomb
+{
+	let text = ObjText_Create();
+	ObjText_SetFontType(text, "Dogica Pixel");
+	ObjText_SetFontSize(text, 27);
+	ObjText_SetFontColorTop(text, 255, 255, 0);
+	ObjText_SetFontColorBottom(text, 255, 255, 0);
+	ObjRender_SetX(text, 547);
+	ObjRender_SetY(text, 243);
+	Obj_SetRenderPriority(text, 0.1);
+	round(text);
+
+	while(true)
+	{
+		let score = GetPlayerSpell();
+		score = min(score, 999999);
+		ObjText_SetText(text, rtos("00", score));
+		yield;
+	}
+}
+
+
+
+task TScore
+{
+	let text = ObjText_Create();
+	ObjText_SetFontType(text, "Dogica Pixel");
+	ObjText_SetFontSize(text, 17);
+	ObjText_SetFontColorTop(text, 255, 255, 0);
+	ObjText_SetFontColorBottom(text, 255, 255, 0);
+	ObjRender_SetX(text, 514.5);
+	ObjRender_SetY(text, 73);
+	Obj_SetRenderPriority(text, 0.1);
+	round(text);
+
+	while(true)
+	{
+		let score = GetScore();
+		score = min(score, 99999999);
+		ObjText_SetText(text, rtos("00000000", score));
+		yield;
+	}
+}
+
+
+
+
+task TBossLife
+{
+	let path = "script/default_system/img/Default_System.png";
+	let obj = ObjPrim_Create(OBJ_SPRITE_LIST_2D);
+	ObjPrim_SetTexture(obj, path);
+	Obj_SetRenderPriority(obj, 0.7);
+
+	let lastRemStep = -1;
+	let lifeRateRender = 0;
+
+	let objScene = ID_INVALID;
+	loop
+	{
+		objScene = GetEnemyBossSceneObjectID();
+		ObjSpriteList2D_ClearVertexCount(obj);
+		if(objScene != ID_INVALID)
+		{
+			RenderLife();
+		}
+		yield;
+	}
+
+
+	function RenderLife()
+	{
+		//残りステップ
+		let countRemStep = ObjEnemyBossScene_GetInfo(objScene, INFO_REMAIN_STEP_COUNT);
+		if(lastRemStep != countRemStep)
+		{
+			//ステップが変化
+			lifeRateRender = 0;
+		}
+
+		//ライフ表示
+		let lifeTotalMax = ObjEnemyBossScene_GetInfo(objScene, INFO_ACTIVE_STEP_TOTAL_MAX_LIFE);
+		let lifeTotal = ObjEnemyBossScene_GetInfo(objScene, INFO_ACTIVE_STEP_TOTAL_LIFE);
+		let lifeRate = min(lifeTotal / lifeTotalMax, lifeRateRender);
+		ObjSpriteList2D_SetSourceRect(obj, 1, 1, 127, 11);
+		ObjSpriteList2D_SetDestRect(obj, 72, 8, 72 + 270 * lifeRate, 12);
+		ObjSpriteList2D_AddVertex(obj);
+
+		//ライフの区切り表示
+		ObjSpriteList2D_SetSourceRect(obj, 132, 1, 137, 11);
+		let listLifeDiv = [0] ~ ObjEnemyBossScene_GetInfo(objScene, INFO_ACTIVE_STEP_LIFE_RATE_LIST);
+		ascent(iDiv in 0 .. length(listLifeDiv))
+		{
+			let rate = listLifeDiv[iDiv];
+			let x = 72 + 270 * (1-rate);
+			ObjSpriteList2D_SetDestRect(obj, x-1, 4, x + 1, 14);
+			ObjSpriteList2D_AddVertex(obj);
+		}
+
+		//残りステップ表示
+		ObjSpriteList2D_SetSourceRect(obj, 1, 1, 127, 11);
+		ascent(iStep in 0 .. countRemStep)
+		{
+			let remStepRate = 58 / countRemStep;
+			ObjSpriteList2D_SetDestRect(obj, 4 + iStep * remStepRate + 2, 8,
+				4 + (iStep + 1) * remStepRate, 12);
+			ObjSpriteList2D_AddVertex(obj);
+		}
+
+		lifeRateRender += 0.01;
+		lifeRateRender = min(lifeRateRender, 1);
+		lastRemStep = countRemStep;
+	}
+}
+
+//----------------------------------------------------
+//タイマー表示
+//----------------------------------------------------
+
+function CreateSTGBoss(ID, x, y, speedE, angleE, life, graphic)
+{
+	let obj = ObjEnemy_Create(OBJ_ENEMY);
+	ObjEnemy_Regist(obj);
+	ObjEnemy_SetLife(obj, life);
+	
+	task TRender
+	{
+		let obj1 = ObjPrim_Create(OBJ_SPRITE_2D);
+		ObjPrim_SetTexture(obj1, stgEnemyFilePath);
+		ObjSprite2D_SetSourceRect(obj1, 3, 3, 3, 3);
+		ObjSprite2D_SetDestCenter(obj1);
+	}
+}
+
+	
